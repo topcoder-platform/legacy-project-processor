@@ -1,0 +1,58 @@
+{
+  "name": "legacy-project-processor",
+  "version": "1.0.0",
+  "description": "Topcoder - Legacy Project Processor",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "init-db": "node scripts/init-db.js",
+    "test-data": "node scripts/test-data.js",
+    "test": "mocha test/helper.test.js && mocha test/processor.test.js --timeout 20000 --exit",
+    "helper:test": "nyc --silent mocha test/helper.test.js --exit",
+    "processor:test": "nyc --silent --no-clean mocha test/processor.test.js --timeout 20000 --exit",
+    "cover:report": "nyc report --reporter=html --reporter=text",
+    "test:cov": "npm run helper:test && npm run processor:test && npm run cover:report"
+  },
+  "author": "TCSCODER",
+  "license": "none",
+  "devDependencies": {
+    "should": "^13.2.3",
+    "mocha": "^6.1.4",
+    "nyc": "^14.1.1",
+    "superagent": "^5.1.0",
+    "standard": "^12.0.1",
+    "sinon": "^7.3.2"
+  },
+  "dependencies": {
+    "@hapi/joi": "^15.1.0",
+    "bluebird": "^3.5.5",
+    "config": "^3.1.0",
+    "get-parameter-names": "^0.3.0",
+    "html-entities": "^1.2.1",
+    "ifxnjs": "^8.0.1",
+    "lodash": "^4.17.11",
+    "no-kafka": "^3.4.3",
+    "pg": "^7.11.0",
+    "pg-hstore": "^2.3.3",
+    "q": "^1.5.1",
+    "sequelize": "^5.9.0",
+    "topcoder-healthcheck-dropin": "^1.0.3",
+    "winston": "^3.2.1"
+  },
+  "engines": {
+    "node": "8.x"
+  },
+  "standard": {
+    "env": [
+      "mocha"
+    ]
+  },
+  "nyc": {
+    "exclude": [
+      "scripts/*.js",
+      "test/*.js"
+    ]
+  }
+}
