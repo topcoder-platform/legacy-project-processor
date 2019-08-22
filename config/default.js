@@ -16,6 +16,7 @@ module.exports = {
 
   CREATE_PROJECT_TOPIC: process.env.CREATE_PROJECT_TOPIC || 'project.notification.create',
   UPDATE_PROJECT_TOPIC: process.env.UPDATE_PROJECT_TOPIC || 'project.notification.update',
+  DELETE_PROJECT_TOPIC: process.env.DELETE_PROJECT_TOPIC || 'project.notification.delete',
 
   // informix database configuration
   INFORMIX: {

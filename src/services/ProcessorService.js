@@ -13,9 +13,13 @@ const {
   PROJECT_STATUS,
   AUDIT_ACTION,
   PERMISSION_TYPE,
-  PROJECT_CREATE_RESOURCES,
-  PROJECT_UPDATE_RESOURCES,
-  BUGR_CONTEST_TYPE_ID
+  BUGR_CONTEST_TYPE_ID,
+  ADMIN_ROLE,
+  COPILOT_ROLE,
+  MANAGER_ROLE,
+  ACCOUNT_MANAGER_ROLE,
+  MANAGER_METADATA_KEY,
+  ACCOUNT_MANAGER_METADATA_KEY
 } = require('../constants')
 
 /**
@@ -49,6 +53,58 @@ async function checkBillingAccountExist (connection, billingAccountId) {
   const result = await connection.queryAsync(`select count(*) as cnt from time_oltp:project p where p.project_id = ${billingAccountId}`)
   if (Number(result[0].cnt) === 0) {
     throw new Error(`The billing account with id: ${billingAccountId} doesn't exist`)
+  }
+}
+
+/**
+ * Check user is admin
+ * @param {Number} userId the user id.
+ * @returns {Boolean} true if user is admin, false otherwise
+ */
+async function checkUserIsAdmin (connection, userId) {
+  const result = await connection.queryAsync(`select sr.description as role from common_oltp:security_user su, common_oltp:user_role_xref urx, common_oltp:security_roles sr where urx.login_id = su.login_id and sr.role_id = urx.role_id and su.login_id = ${userId}`)
+  return _.find(result, { role: ADMIN_ROLE }) !== undefined
+}
+
+/**
+ * Get user handle by id
+ * @param {Number} userId the user id.
+ * @returns {String} the user handel
+ */
+async function getUserHandle (connection, userId) {
+  const handleRes = await connection.queryAsync(`select handle from common_oltp:user where user_id = ${userId}`)
+  if (handleRes.length === 0) {
+    throw new Error(`User with id: ${userId} doesn't exist.`)
+  }
+  return handleRes[0].handle
+}
+
+/**
+ * Ensure user can access the corresponding billing account
+ * @param {Object} connection the Informix connection
+ * @param {Number} billingAccountId the billing account id
+ * @param {Number} userId the user id
+ */
+async function checkCanAccessBillingAccount (connection, billingAccountId, userId) {
+  const isAdmin = await checkUserIsAdmin(connection, userId)
+  let directAccessIds
+  if (isAdmin) {
+    directAccessIds = await connection.queryAsync(`select p.project_id as id from time_oltp:project as p left join time_oltp:client_project as cp on p.project_id = cp.project_id left join time_oltp:client c on c.client_id = cp.client_id and (c.is_deleted = 0 or c.is_deleted is null) where p.active = 1 and p.start_date <= current and current <= p.end_date`)
+  } else {
+    const userName = await getUserHandle(connection, userId)
+
+    directAccessIds = await connection.queryAsync(`select p.project_id as id from time_oltp:project as p left join time_oltp:client_project as cp on p.project_id = cp.project_id left join time_oltp:client c on c.client_id = cp.client_id and (c.is_deleted = 0 or c.is_deleted is null) where p.active = 1 and p.start_date <= current and current <= p.end_date and p.active = 1 and p.project_id in (SELECT distinct project_id FROM time_oltp:project_manager p, time_oltp:user_account u WHERE p.user_account_id = u.user_account_id and p.active = 1 and upper(u.user_name) = upper('${userName}') union SELECT distinct project_id FROM time_oltp:project_worker p, time_oltp:user_account u WHERE p.start_date <= current and current <= p.end_date and p.active =1 and p.user_account_id = u.user_account_id and upper(u.user_name) =  upper('${userName}'))`)
+  }
+
+  if (_.find(directAccessIds, { id: billingAccountId })) {
+    return
+  }
+
+  // fetch billing account id via security groups the user has permission with
+  const billingAccountIds = await connection.queryAsync(`select gaba.billing_account_id as id from tcs_catalog:group_associated_billing_accounts gaba, tcs_catalog:customer_group cg where gaba.group_id = cg.group_id and cg.archived<>1 and (cg.client_id in (select ca.client_id from tcs_catalog:customer_administrator ca where ca.user_id=${userId}) or cg.group_id in (select gm.group_id from tcs_catalog:group_member gm, tcs_catalog:customer_group g3 where gm.group_id=g3.group_id and (gm.use_group_default=0 and gm.specific_permission='FULL' or gm.use_group_default=1 and g3.default_permission='FULL') and gm.active=1 and gm.user_id=${userId}))`)
+
+  if (!_.find(billingAccountIds, { id: billingAccountId })) {
+    throw new Error(`You don't have permission to access this billing account`)
   }
 }
 
@@ -177,18 +233,21 @@ async function createProject (connection, directProjectId, projectData) {
  * @param {Object} connection the Informix connection
  * @param {Number} directProjectId the direct project id
  * @param {Number} billingAccountId the billing account id
- * @param {Boolean} isCreated the boolean flag indicate we are going to create direct project or not
+ * @param {Number} userId the user id
+ * @param {Boolean} ifProjectExists the boolean flag indicate the direct project already exists or not
  * @returns {Object} the calculated contest fee and boolean flag indicate associate operation is need
  */
-async function calculateFeeAndCheckAssociate (connection, directProjectId, billingAccountId, isCreated) {
+async function calculateFeeAndCheckAssociate (connection, directProjectId, billingAccountId, userId, ifProjectExists) {
   let alreadyAssociated = false
   let fee = {}
 
   await checkBillingAccountExist(connection, billingAccountId)
+  // check user can access billing account
+  await checkCanAccessBillingAccount(connection, billingAccountId, userId)
 
   // check whether billing account already associate to this direct project
   // not need to perform checking if we are going to create the direct project latter
-  if (!isCreated) {
+  if (ifProjectExists) {
     alreadyAssociated = await checkBillingAccountAssociate(connection, directProjectId, billingAccountId)
 
     if (!alreadyAssociated) {
@@ -350,13 +409,13 @@ async function processCreate (message) {
     await connection.beginTransactionAsync()
 
     let directProjectId
-    let isCreated = true
+    let ifProjectExists = false
     let billingAccountId = message.payload.billingAccountId
 
     if (message.payload.directProjectId) {
       // upsert project with given id
       directProjectId = message.payload.directProjectId
-      isCreated = false
+      ifProjectExists = true
     } else {
       // create project
       const generateId = await connection.queryAsync('select first 1 project_sequence.nextval from direct_project_type')
@@ -367,22 +426,22 @@ async function processCreate (message) {
     let needAssociate
 
     let existingProject
-    if (!isCreated) {
+    if (ifProjectExists) {
       // determine upsert operation(insert or update) base on project with given id existed or not
       existingProject = await getProject(connection, directProjectId)
       if (!existingProject) {
-        isCreated = true
+        ifProjectExists = false
       }
     }
 
     if (billingAccountId) {
       // Calculated contest fee and determine whether do we need to associate the billing account
-      let result = await calculateFeeAndCheckAssociate(connection, directProjectId, billingAccountId, isCreated)
+      let result = await calculateFeeAndCheckAssociate(connection, directProjectId, billingAccountId, message.payload.createdBy, ifProjectExists)
       fee = result.fee
       needAssociate = result.needAssociate
     }
 
-    if (isCreated) {
+    if (!ifProjectExists) {
       // create the direct project
       await createProject(connection, directProjectId,
         _.assign({
@@ -426,7 +485,7 @@ processCreate.schema = {
     timestamp: joi.date().required(),
     'mime-type': joi.string().required(),
     payload: joi.object().keys({
-      resource: joi.string().required().valid(PROJECT_CREATE_RESOURCES),
+      resource: joi.string().required(),
       id: joi.numberId(),
       name: joi.string().max(200).required(),
       description: joi.string().max(10000).allow('').required(),
@@ -439,7 +498,23 @@ processCreate.schema = {
 }
 
 /**
- * Process create project message
+ * Get direct project id from postgres database
+ * @param {Object} connection the Informix connection
+ * @param {String} id the project id
+ * @returns {String} the direct project id
+ */
+async function getDirectProjectId (connection, id) {
+  // retrieve projects.directProjectId from Postgres
+  const res = await helper.getPostgresConnection().query(`select "directProjectId" from ${config.POSTGRES.PROJECT_TABLE_NAME} where id = ${id}`)
+  if (res[0].length > 0) {
+    return res[0][0].directProjectId
+  } else {
+    throw new Error(`No project with id: ${id} exist in Postgres database`)
+  }
+}
+
+/**
+ * Process update project message
  * @param {Object} message the kafka message
  */
 async function processUpdate (message) {
@@ -450,13 +525,16 @@ async function processUpdate (message) {
     // begin transaction
     await connection.beginTransactionAsync()
 
-    const directProjectId = message.payload.directProjectId
+    let directProjectId = message.payload.directProjectId
+    if (!directProjectId) {
+      directProjectId = await getDirectProjectId(connection, message.payload.id)
+    }
     const existingProject = await getProject(connection, directProjectId)
     if (existingProject) {
       if (message.payload.billingAccountId) {
         const billingAccountId = message.payload.billingAccountId
         // Calculated contest fee and determine whether do we need to associate the billing account
-        let { fee, needAssociate } = await calculateFeeAndCheckAssociate(connection, directProjectId, billingAccountId, false)
+        let { fee, needAssociate } = await calculateFeeAndCheckAssociate(connection, directProjectId, billingAccountId, message.payload.updatedBy, true)
 
         // update the direct project
         await updateProject(connection, directProjectId, fee, existingProject)
@@ -488,16 +566,443 @@ processUpdate.schema = {
     timestamp: joi.date().required(),
     'mime-type': joi.string().required(),
     payload: joi.object().keys({
-      resource: joi.string().required().valid(PROJECT_UPDATE_RESOURCES),
-      directProjectId: joi.numberId(),
-      billingAccountId: joi.optionalNumberId().allow(null)
+      resource: joi.string().required(),
+      id: joi.numberId(),
+      directProjectId: joi.optionalNumberId(),
+      billingAccountId: joi.optionalNumberId().allow(null),
+      updatedBy: joi.numberId()
+    }).unknown(true).required()
+  }).required()
+}
+
+/**
+ * Get copilot profile id by the specified user
+ * @param {Object} connection the Informix connection
+ * @param {Number} userId the user id
+ * @returns {String} the copilot profile id
+ */
+async function getCopilotProfileId (connection, userId) {
+  const result = await connection.queryAsync(`select copilot_profile_id from tcs_catalog:copilot_profile where user_id = ${userId} and copilot_profile_status_id = 1`)
+  if (result.length === 0) {
+    throw new Error(`Given user: ${userId} is not in the copilot pool`)
+  } else {
+    return result[0].copilot_profile_id
+  }
+}
+
+/**
+ * Get if the given copilot is already the copilot of specified project
+ * @param {Object} connection the Informix connection
+ * @param {Number} directProjectId the direct project id
+ * @param {Number} copilotProfileId the copilot profile id
+ * @returns {Boolean} true if is already project's co-pilot, false otherwise
+ */
+async function checkIsProjectCopilot (connection, directProjectId, copilotProfileId) {
+  const result = await connection.queryAsync(`select count(*) as cnt from tcs_catalog:copilot_project where tc_direct_project_id = ${directProjectId} and copilot_profile_id = ${copilotProfileId} and copilot_project_status_id = 1`)
+  return Number(result[0].cnt) > 0
+}
+
+/**
+ * Add a copilot to the project
+ * @param {Number} userId the user to be a copilot
+ * @param {Number} projectId the project id
+ * @param {Number} currentUser the user who perform this operation
+ */
+async function addCopilot (userId, projectId, currentUser) {
+  // informix database connection
+  const connection = await helper.getInformixConnection()
+
+  try {
+    // begin transaction
+    await connection.beginTransactionAsync()
+
+    // get copilot profile id
+    const copilotProfileId = await getCopilotProfileId(connection, userId)
+    // get direct project id from postgres database
+    const directProjectId = await getDirectProjectId(connection, projectId)
+
+    // Check the current user permission on the project
+    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+
+    // check if member is assigned as copilot
+    const isProjectCopilot = await checkIsProjectCopilot(connection, directProjectId, copilotProfileId)
+    if (isProjectCopilot) {
+      throw new Error(`User: ${userId} is already the copilot of the given project`)
+    }
+
+    // prepare the statement for inserting the copilot data to tcs_catalog.copilot_project table
+    const copilotPayload = {
+      copilot_profile_id: copilotProfileId,
+      tc_direct_project_id: directProjectId,
+      copilot_type_id: 1,
+      copilot_project_status_id: 1,
+      private_project: 0,
+      create_user: currentUser,
+      modify_user: currentUser
+    }
+
+    const keys = Object.keys(copilotPayload)
+    const fields = ['copilot_project_id', 'create_date', 'modify_date'].concat(keys)
+    const values = ['tcs_catalog:copilot_project_sequence.nextval', 'current', 'current'].concat(_.fill(Array(keys.length), '?'))
+
+    const createCopilotStmt = await prepare(connection, `insert into tcs_catalog:copilot_project (${fields.join(', ')}) values (${values.join(', ')})`)
+
+    await createCopilotStmt.executeAsync(Object.values(copilotPayload))
+
+    // grant full permission to copilot
+    await grantPermission(connection, directProjectId, userId, PERMISSION_TYPE.PROJECT_FULL)
+
+    // commit the transaction
+    await connection.commitTransactionAsync()
+  } catch (e) {
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+}
+
+/**
+ * Get the project metadata id by direct project id and key id
+ * @param {Object} connection the Informix connection
+ * @param {Number} directProjectId the direct project id
+ * @param {Number} metadataKeyId the metadata key id
+ * @param {Number} metadataValue the metadata value
+ * @returns the project metadata id
+ */
+async function getProjectMetadataId (connection, directProjectId, metadataKeyId, metadataValue) {
+  const result = await connection.queryAsync(`select project_metadata_id from tcs_catalog:direct_project_metadata where tc_direct_project_id = ${directProjectId} and project_metadata_key_id = ${metadataKeyId} and metadata_value = ${metadataValue}`)
+  return result[0].project_metadata_id
+}
+
+/**
+ * Generate the metadata audit id for audit record
+ * @param {Object} connection the Informix connection
+ * @param {Number} directProjectId the direct project id
+ * @param {Number} metadataKeyId the metadata key id
+ * @returns the metadata audit id
+ */
+async function generateMetadataAuditId (connection, directProjectId, metadataKeyId) {
+  const result = await connection.queryAsync(`select max(project_metadata_audit_id) as id from tcs_catalog:direct_project_metadata_audit`)
+  return Number(result[0].id) + 1
+}
+
+/**
+ * Upsert direct project metadata
+ * @param {Object} connection the Informix connection
+ * @param {Number} directProjectId the direct project id
+ * @param {Number} metadataKeyId the metadata key id
+ * @param {String} metadataValue the metadata value
+ * @param {Number} currentUser the user who perform this operation.
+ */
+async function upsertDirectProjectMetadata (connection, directProjectId, metadataKeyId, metadataValue, actionType, currentUser) {
+  let directProjectMetadataId
+  if (actionType === AUDIT_ACTION.CREATE) {
+    const metadataPayload = {
+      tc_direct_project_id: directProjectId,
+      project_metadata_key_id: metadataKeyId,
+      metadata_value: metadataValue
+    }
+
+    const keys = Object.keys(metadataPayload)
+    const values = _.fill(Array(keys.length), '?')
+
+    const createMetaStmt = await prepare(connection, `insert into tcs_catalog:direct_project_metadata (${keys.join(', ')}) values (${values.join(', ')})`)
+    await createMetaStmt.executeAsync(Object.values(metadataPayload))
+    directProjectMetadataId = await getProjectMetadataId(connection, directProjectId, metadataKeyId, metadataValue)
+  } else if (actionType === AUDIT_ACTION.DELETE) {
+    directProjectMetadataId = await getProjectMetadataId(connection, directProjectId, metadataKeyId, metadataValue)
+    await connection.queryAsync(`delete from tcs_catalog:direct_project_metadata where project_metadata_id = ${directProjectMetadataId}`)
+  } else {
+    throw new Error(`Updating manager role is not supported`)
+  }
+
+  const auditId = await generateMetadataAuditId(connection)
+
+  const auditPayload = {
+    project_metadata_audit_id: auditId,
+    project_metadata_id: directProjectMetadataId,
+    tc_direct_project_id: directProjectId,
+    project_metadata_key_id: metadataKeyId,
+    metadata_value: metadataValue,
+    audit_action_type_id: actionType,
+    action_user_id: currentUser
+  }
+
+  const auditKeys = Object.keys(auditPayload)
+  const fields = ['action_date'].concat(auditKeys)
+  const auditValues = ['current'].concat(_.fill(Array(auditKeys.length), '?'))
+
+  const createAuditStmt = await prepare(connection, `insert into tcs_catalog:direct_project_metadata_audit (${fields.join(', ')}) values (${auditValues.join(', ')})`)
+
+  await createAuditStmt.executeAsync(Object.values(auditPayload))
+}
+
+/**
+ * Get all managers from project metadata
+ * @param {Object} connection the Informix connection
+ * @param {Number} directProjectId the direct project id
+ * @param {Number} metadataKeyId the metadata key id
+ */
+async function getAllManagers (connection, directProjectId, metadataKeyId) {
+  const result = await connection.queryAsync(`select metadata_value, project_metadata_id from tcs_catalog:direct_project_metadata where tc_direct_project_id = ${directProjectId} and project_metadata_key_id = ${metadataKeyId}`)
+  if (result.length === 0) {
+    return []
+  } else {
+    return _.map(result, 'metadata_value')
+  }
+}
+
+/**
+ * Add a manager to the project
+ * @param {Number} userId the user id
+ * @param {Number} projectId the project id
+ * @param {Boolean} isManager the boolean flag indicate adding manager(true) or account manager(false)
+ * @param {Number} currentUser the user who perform this operation
+ */
+async function addManager (userId, projectId, isManager, currentUser) {
+  const metadataKeyId = isManager ? MANAGER_METADATA_KEY : ACCOUNT_MANAGER_METADATA_KEY
+
+  // informix database connection
+  const connection = await helper.getInformixConnection()
+  try {
+    // begin transaction
+    await connection.beginTransactionAsync()
+
+    // get direct project id from postgres database
+    const directProjectId = await getDirectProjectId(connection, projectId)
+
+    // Check the current user permission on the project
+    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+
+    const users = await getAllManagers(connection, directProjectId, metadataKeyId)
+
+    if (_.includes(users, userId.toString())) {
+      throw new Error(`User: ${userId} is already the ${isManager ? '' : 'account '}manager of the given project`)
+    }
+
+    await upsertDirectProjectMetadata(connection, directProjectId, metadataKeyId, userId, AUDIT_ACTION.CREATE, currentUser)
+
+    // grant full permission to manager
+    await grantPermission(connection, directProjectId, userId, PERMISSION_TYPE.PROJECT_FULL)
+
+    // commit the transaction
+    await connection.commitTransactionAsync()
+  } catch (e) {
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+}
+
+/**
+ * Process add member message
+ * @param {Object} message the kafka message
+ */
+async function processAddMember (message) {
+  const userId = message.payload.userId
+  const projectId = message.payload.projectId
+  const currentUser = message.payload.createdBy
+  const role = message.payload.role
+  if (role === COPILOT_ROLE) {
+    await addCopilot(userId, projectId, currentUser)
+  } else if (role === MANAGER_ROLE || role === ACCOUNT_MANAGER_ROLE) {
+    await addManager(userId, projectId, role === MANAGER_ROLE, currentUser)
+  } else {
+    logger.info('Ignore other message, only add copilot/manager are supported')
+  }
+}
+
+processAddMember.schema = {
+  message: joi.object().keys({
+    topic: joi.string().required(),
+    originator: joi.string().required(),
+    timestamp: joi.date().required(),
+    'mime-type': joi.string().required(),
+    payload: joi.object().keys({
+      resource: joi.string().required(),
+      userId: joi.numberId(),
+      role: joi.string().required(),
+      projectId: joi.numberId(),
+      createdBy: joi.numberId()
+    }).unknown(true).required()
+  }).required()
+}
+
+/**
+ * Remove a copilot from project
+ * @param {Number} userId the copilot user's id
+ * @param {Number} projectId the project id
+ * @param {Number} currentUser the user who perform this operation
+ */
+async function removeCopilot (userId, projectId, currentUser) {
+  // informix database connection
+  const connection = await helper.getInformixConnection()
+
+  try {
+    // begin transaction
+    await connection.beginTransactionAsync()
+
+    // get copilot profile id
+    const copilotProfileId = await getCopilotProfileId(connection, userId)
+    // get direct project id from postgres database
+    const directProjectId = await getDirectProjectId(connection, projectId)
+
+    // Check the current user permission on the project
+    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+
+    // check if member is assigned as copilot
+    const isProjectCopilot = await checkIsProjectCopilot(connection, directProjectId, copilotProfileId)
+    if (!isProjectCopilot) {
+      throw new Error(`User: ${userId} is not the copilot of the given project`)
+    }
+    // remove a co-pilot from project
+    await connection.queryAsync(`delete from tcs_catalog:copilot_project where tc_direct_project_id = ${directProjectId} and copilot_profile_id = ${copilotProfileId} and copilot_project_status_id = 1`)
+
+    // delete permission for copilot
+    await deletePermission(connection, directProjectId, userId, PERMISSION_TYPE.PROJECT_FULL, currentUser)
+
+    // commit the transaction
+    await connection.commitTransactionAsync()
+  } catch (e) {
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+}
+
+/**
+ * Get the permission grant id
+ * @param {Object} connection the Informix connection
+ * @param {Number} directProjectId the direct project id
+ * @param {Number} userId the user id
+ * @param {Number} permissionTypeId the permission type id
+ * @returns the permission grant id
+ */
+async function checkAndGetPermissionId (connection, directProjectId, userId, permissionTypeId) {
+  const result = await connection.queryAsync(`select user_permission_grant_id as id from user_permission_grant where user_id = ${userId} and resource_id = ${directProjectId} and permission_type_id = ${permissionTypeId} and is_studio = 0`)
+  if (result.length === 0) {
+    throw new Error(`User ${userId} doesn't have appropriate permission on the project ${directProjectId}`)
+  }
+  return result[0].id
+}
+
+/**
+ * Delete permission to user for specified direct project
+ * @param {Object} connection the Informix connection
+ * @param {Number} directProjectId the direct project id
+ * @param {Number} userId the user id
+ * @param {Number} permissionTypeId the permission type id
+ * @param {Number} currentUser the user who perform this operation
+ */
+async function deletePermission (connection, directProjectId, userId, permissionTypeId, currentUser) {
+  const permissionId = await checkAndGetPermissionId(connection, directProjectId, userId, permissionTypeId)
+  // delete permission grant
+  await connection.queryAsync(`delete from user_permission_grant where user_permission_grant_id = ${permissionId}`)
+
+  // prepare the statement for inserting the audit data to coporate_oltp.user_permission_grant_audit table
+  const auditPayload = {
+    user_permission_grant_id: permissionId,
+    audit_action_type_id: AUDIT_ACTION.DELETE,
+    user_id: userId,
+    resource_id: directProjectId,
+    action_user_id: currentUser,
+    field_name: 'permission_type_id',
+    old_value: permissionTypeId
+  }
+
+  const keys = Object.keys(auditPayload)
+  const auditKeys = ['user_permission_grant_audit_id'].concat(keys)
+  const auditValues = ['user_permission_grant_audit_sequence.nextval'].concat(_.fill(Array(keys.length), '?'))
+
+  const createAuditStmt = await prepare(connection, `insert into user_permission_grant_audit (${auditKeys.join(', ')}) values (${auditValues.join(', ')})`)
+  await createAuditStmt.executeAsync(Object.values(auditPayload))
+}
+
+/**
+ * Remove a manager from project
+ * @param {Number} userId the manager's user id
+ * @param {Number} projectId the project id
+ * @param {Boolean} isManager the boolean flag indicate remove manager(true) or account manager(false)
+ * @param {Number} currentUser the user who perform this operation
+ */
+async function removeManager (userId, projectId, isManager, currentUser) {
+  const metadataKeyId = isManager ? MANAGER_METADATA_KEY : ACCOUNT_MANAGER_METADATA_KEY
+
+  // informix database connection
+  const connection = await helper.getInformixConnection()
+  try {
+    // begin transaction
+    await connection.beginTransactionAsync()
+
+    // get direct project id from postgres database
+    const directProjectId = await getDirectProjectId(connection, projectId)
+
+    // Check the current user permission on the project
+    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+
+    const users = await getAllManagers(connection, directProjectId, metadataKeyId)
+
+    if (!_.includes(users, userId.toString())) {
+      throw new Error(`User: ${userId} is not the ${isManager ? '' : 'account '}manager of the given project`)
+    }
+
+    await upsertDirectProjectMetadata(connection, directProjectId, metadataKeyId, userId, AUDIT_ACTION.DELETE, currentUser)
+
+    // delete permission for manager
+    await deletePermission(connection, directProjectId, userId, PERMISSION_TYPE.PROJECT_FULL, currentUser)
+
+    // commit the transaction
+    await connection.commitTransactionAsync()
+  } catch (e) {
+    await connection.rollbackTransactionAsync()
+    throw e
+  } finally {
+    await connection.closeAsync()
+  }
+}
+
+/**
+ * Process remove member message
+ * @param {Object} message the kafka message
+ */
+async function processRemoveMember (message) {
+  const userId = message.payload.userId
+  const projectId = message.payload.projectId
+  const currentUser = message.payload.deletedBy
+  const role = message.payload.role
+  if (role === COPILOT_ROLE) {
+    await removeCopilot(userId, projectId, currentUser)
+  } else if (role === MANAGER_ROLE || role === ACCOUNT_MANAGER_ROLE) {
+    await removeManager(userId, projectId, role === MANAGER_ROLE, currentUser)
+  } else {
+    logger.info('Ignore other message, only remove copilot/manager are supported')
+  }
+}
+
+processRemoveMember.schema = {
+  message: joi.object().keys({
+    topic: joi.string().required(),
+    originator: joi.string().required(),
+    timestamp: joi.date().required(),
+    'mime-type': joi.string().required(),
+    payload: joi.object().keys({
+      resource: joi.string().required(),
+      userId: joi.numberId(),
+      role: joi.string().required(),
+      projectId: joi.numberId(),
+      deletedBy: joi.numberId()
     }).unknown(true).required()
   }).required()
 }
 
 module.exports = {
   processCreate,
-  processUpdate
+  processUpdate,
+  processAddMember,
+  processRemoveMember
 }
 
 logger.buildService(module.exports)

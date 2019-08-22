@@ -3,12 +3,14 @@
  */
 
 require('./bootstrap')
+const _ = require('lodash')
 const config = require('config')
 const Kafka = require('no-kafka')
 const healthcheck = require('topcoder-healthcheck-dropin')
 const logger = require('./common/logger')
 const helper = require('./common/helper')
 const ProcessorService = require('./services/ProcessorService')
+const { PROJECT_RESOURCE, MEMBER_RESOURCE } = require('./constants')
 
 // Start kafka consumer
 logger.info('Starting kafka consumer')
@@ -45,13 +47,30 @@ const dataHandler = (messageSet, topic, partition) => Promise.each(messageSet, a
   }
 
   try {
-    if (topic === config.CREATE_PROJECT_TOPIC) {
-      await ProcessorService.processCreate(messageJSON)
+    const resource = _.get(messageJSON, 'payload.resource')
+    if (resource === PROJECT_RESOURCE) {
+      if (topic === config.CREATE_PROJECT_TOPIC) {
+        await ProcessorService.processCreate(messageJSON)
+        logger.debug('Successfully processed message')
+      } else if (topic === config.UPDATE_PROJECT_TOPIC) {
+        await ProcessorService.processUpdate(messageJSON)
+        logger.debug('Successfully processed message')
+      } else {
+        logger.info('Ignored the message')
+      }
+    } else if (resource === MEMBER_RESOURCE) {
+      if (topic === config.CREATE_PROJECT_TOPIC) {
+        await ProcessorService.processAddMember(messageJSON)
+        logger.debug('Successfully processed message')
+      } else if (topic === config.DELETE_PROJECT_TOPIC) {
+        await ProcessorService.processRemoveMember(messageJSON)
+        logger.debug('Successfully processed message')
+      } else {
+        logger.info('Ignored the message')
+      }
     } else {
-      await ProcessorService.processUpdate(messageJSON)
+      logger.info('Ignored the message')
     }
-
-    logger.debug('Successfully processed message')
   } catch (err) {
     logger.logFullError(err)
   } finally {
@@ -73,7 +92,7 @@ const check = () => {
   return connected
 }
 
-const topics = [config.CREATE_PROJECT_TOPIC, config.UPDATE_PROJECT_TOPIC]
+const topics = [config.CREATE_PROJECT_TOPIC, config.UPDATE_PROJECT_TOPIC, config.DELETE_PROJECT_TOPIC]
 
 consumer
   .init([{

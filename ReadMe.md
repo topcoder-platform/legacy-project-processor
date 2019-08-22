@@ -1,4 +1,4 @@
-# Topcoder - Legacy Groups Processor
+# Topcoder - Legacy Project Processor
 
 ## Dependencies
 
@@ -23,6 +23,7 @@ The following parameters can be set in config files or in env variables:
 - KAFKA_GROUP_ID: the Kafka group id, default value is 'legacy-project-processor'
 - CREATE_PROJECT_TOPIC: create project Kafka topic, default value is 'project.notification.create'
 - UPDATE_PROJECT_TOPIC: update project Kafka topic, default value is 'project.notification.update'
+- DELETE_PROJECT_TOPIC: delete project member Kafka topic, default value is 'project.notification.delete'
 - INFORMIX: Informix database configuration parameters, refer `config/default.js` for more information
 - POSTGRES: Postgres database configuration parameters, refer `config/default.js` for more information
 
@@ -49,6 +50,8 @@ Configuration for the tests is at `config/test.js`, only add such new configurat
   `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.notification.create`
 
   `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.notification.update`
+
+  `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.notification.delete`
 
 - verify that the topics are created:
   `bin/kafka-topics.sh --list --zookeeper localhost:2181`,
@@ -116,8 +119,3 @@ Modify `docker/docker-compose.yml` with `command: run test:cov`(uncomment it) an
 
 ## Verification
 Refer `Verification.md`
-
-## Notes
-1. Refer tc-project-service code, although tc_direct_project.description can be null in informix database. However the description field in message sent to Kafka by tc-project-service will be not null. In tc-project-service, it will use ''(empty string) as default description if not provided in request.
-2. I have combined the update contest fee logic into create project. So you don't need to first insert a record into tc_direct_project table and then update percentage_bug_contest_fee/fixed_bug_contest_fee of that record in same table again.
-3. The processor service is fully coveraged(both line and branch). However app.js and logger.js can't fully coverage. It is a common case, you can refer other Kafka project in github repository.
