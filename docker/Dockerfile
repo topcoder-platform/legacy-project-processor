@@ -3,7 +3,7 @@ FROM ibmcom/informix-innovator-c:12.10.FC12W1IE
 ARG servername=informix
 
 USER root
-RUN mkdir /app
+RUN mkdir /legacy-project-processor
 WORKDIR /home/informix
 
 RUN sed -i '/jessie-updates/d' /etc/apt/sources.list
@@ -38,9 +38,9 @@ ENV LICENSE accept
 RUN ln -s /usr/bin/python2.7 /usr/bin/python
 RUN echo "sqlexec 2021/tcp" >> /etc/services
 
-COPY . /app
+COPY . /legacy-project-processor
 
-WORKDIR /app
+WORKDIR /legacy-project-processor
 RUN rm -rf node_modules && npm install --unsafe-perm
 
 ENTRYPOINT [ "npm" ]
