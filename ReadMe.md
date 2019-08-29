@@ -4,7 +4,7 @@
 
 - nodejs https://nodejs.org/en/ (v8)
 - Kafka
-- Informix
+- Informix 
 - Postgres
 - Docker, Docker Compose
 
