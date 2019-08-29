@@ -3,7 +3,7 @@
 ## Dependencies
 
 - nodejs https://nodejs.org/en/ (v8)
-- Kafka
+- Kafka 
 - Informix
 - Postgres
 - Docker, Docker Compose
