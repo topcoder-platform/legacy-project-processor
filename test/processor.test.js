@@ -190,7 +190,7 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
       }
     })
     await waitJob()
-    should.equal(errorLogs[0], 'The message topic invalid doesn\'t match the Kafka topic project.notification.create.')
+    should.equal(errorLogs[0], 'The message topic invalid doesn\'t match the Kafka topic project.action.create.')
   })
 
   it('failure - processor create project with nonexistent billing account ', async () => {

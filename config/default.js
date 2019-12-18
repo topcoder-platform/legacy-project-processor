@@ -14,9 +14,9 @@ module.exports = {
   // Kafka group id
   KAFKA_GROUP_ID: process.env.KAFKA_GROUP_ID || 'legacy-project-processor',
 
-  CREATE_PROJECT_TOPIC: process.env.CREATE_PROJECT_TOPIC || 'project.notification.create',
-  UPDATE_PROJECT_TOPIC: process.env.UPDATE_PROJECT_TOPIC || 'project.notification.update',
-  DELETE_PROJECT_TOPIC: process.env.DELETE_PROJECT_TOPIC || 'project.notification.delete',
+  CREATE_PROJECT_TOPIC: process.env.CREATE_PROJECT_TOPIC || 'project.action.create',
+  UPDATE_PROJECT_TOPIC: process.env.UPDATE_PROJECT_TOPIC || 'project.action.update',
+  DELETE_PROJECT_TOPIC: process.env.DELETE_PROJECT_TOPIC || 'project.action.delete',
 
   // informix database configuration
   INFORMIX: {

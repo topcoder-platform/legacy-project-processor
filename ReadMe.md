@@ -3,7 +3,7 @@
 ## Dependencies
 
 - nodejs https://nodejs.org/en/ (v8)
-- Kafka 
+- Kafka
 - Informix
 - Postgres
 - Docker, Docker Compose
@@ -21,9 +21,9 @@ The following parameters can be set in config files or in env variables:
     if not provided, then SSL connection is not used, direct insecure connection is used;
     if provided, it can be either path to private key file or private key content
 - KAFKA_GROUP_ID: the Kafka group id, default value is 'legacy-project-processor'
-- CREATE_PROJECT_TOPIC: create project Kafka topic, default value is 'project.notification.create'
-- UPDATE_PROJECT_TOPIC: update project Kafka topic, default value is 'project.notification.update'
-- DELETE_PROJECT_TOPIC: delete project member Kafka topic, default value is 'project.notification.delete'
+- CREATE_PROJECT_TOPIC: create project Kafka topic, default value is 'project.action.create'
+- UPDATE_PROJECT_TOPIC: update project Kafka topic, default value is 'project.action.update'
+- DELETE_PROJECT_TOPIC: delete project member Kafka topic, default value is 'project.action.delete'
 - INFORMIX: Informix database configuration parameters, refer `config/default.js` for more information
 - POSTGRES: Postgres database configuration parameters, refer `config/default.js` for more information
 
@@ -47,20 +47,20 @@ Configuration for the tests is at `config/test.js`, only add such new configurat
   `bin/kafka-server-start.sh config/server.properties`
 - note that the zookeeper server is at localhost:2181, and Kafka server is at localhost:9092
 - use another terminal, go to same directory, create the needed topics:
-  `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.notification.create`
+  `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.action.create`
 
-  `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.notification.update`
+  `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.action.update`
 
-  `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.notification.delete`
+  `bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic project.action.delete`
 
 - verify that the topics are created:
   `bin/kafka-topics.sh --list --zookeeper localhost:2181`,
   it should list out the created topics
-- run the producer and then write some message into the console to send to the `project.notification.create` topic:
+- run the producer and then write some message into the console to send to the `project.action.create` topic:
   in the console, write message, one message per line:
-  `{ "topic": "project.notification.create", "originator": "project-api", "timestamp": "2018-07-02T00:00:00", "mime-type": "application/json", "payload": { "resource": "project", "id": 1000, "name": "Develop website", "description": "<h>Test</h><p>This is description</p>", "type": "Develop website", "directProjectId": null, "billingAccountId": 70015983,  "type": "Web Application", "createdBy": 8547899 } }`
+  `{ "topic": "project.action.create", "originator": "project-api", "timestamp": "2018-07-02T00:00:00", "mime-type": "application/json", "payload": { "resource": "project", "id": 1000, "name": "Develop website", "description": "<h>Test</h><p>This is description</p>", "type": "Develop website", "directProjectId": null, "billingAccountId": 70015983,  "type": "Web Application", "createdBy": 8547899 } }`
 - optionally, use another terminal, go to same directory, start a consumer to view the messages:
-  `bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic project.notification.create --from-beginning`
+  `bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic project.action.create --from-beginning`
 - writing/reading messages to/from other topics are similar
 
 ## Topcoder Informix Database Setup
