@@ -3,11 +3,10 @@
  */
 
 require('../src/bootstrap')
-const { getPostgresConnection, getInformixConnection } = require('../src/common/helper')
+const { getInformixConnection } = require('../src/common/helper')
 const logger = require('../src/common/logger')
 
 async function initDB () {
-  await getPostgresConnection().query(`delete from projects`)
   const connection = await getInformixConnection()
   try {
     await connection.queryAsync(`delete from tcs_catalog:direct_project_metadata_audit`)
