@@ -13,6 +13,8 @@ const { initDB } = require('../scripts/init-db')
 const { insertData } = require('../scripts/test-data')
 const { getInformixConnection, getKafkaOptions } = require('../src/common/helper')
 const projectService = require('../src/services/ProjectService')
+const sinon = require('sinon')
+const helper = require('../src/common/helper')
 
 describe('Topcoder - Legacy Project Processor E2E Test', () => {
   let app
@@ -90,6 +92,8 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
   }
 
   before(async () => {
+    sinon.stub(helper, 'getM2MToken').value(() => Promise.resolve('dummy-token'))
+
     // inject logger with log collector
     logger.info = (message) => {
       infoLogs.push(message)
@@ -140,6 +144,8 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
     }
 
     await connection.closeAsync()
+
+    sinon.reset()
   })
 
   beforeEach(() => {

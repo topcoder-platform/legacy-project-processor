@@ -6,7 +6,6 @@ require('../src/bootstrap')
 
 const prepare = require('mocha-prepare')
 const nock = require('nock')
-const testData = require('./testData')
 
 prepare(function (done) {
   let directProjectId
@@ -15,9 +14,6 @@ prepare(function (done) {
     .filteringPath(path => {
       if (path.includes('/projects')) {
         return '/_projects'
-      }
-      if (path.includes('/token')) { // match auth0 url
-        return '/_m2mAuth'
       }
       return path
     })
@@ -31,11 +27,6 @@ prepare(function (done) {
     .patch('/_projects')
     .reply(200, (uri, requestBody) => {
       directProjectId = requestBody.directProjectId
-    })
-    .post('/_m2mAuth')
-    .reply(200, {
-      access_token: testData.token.m2m,
-      expiry: 8400
     })
     .get('/health')
     .reply(200, { checksRun: 1 })
