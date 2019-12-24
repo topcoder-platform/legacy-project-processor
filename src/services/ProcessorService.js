@@ -3,10 +3,10 @@
  */
 
 const _ = require('lodash')
-const config = require('config')
 const joi = require('@hapi/joi')
 const logger = require('../common/logger')
 const helper = require('../common/helper')
+const projectService = require('./ProjectService')
 const Entities = require('html-entities').AllHtmlEntities
 const entities = new Entities()
 const {
@@ -465,10 +465,10 @@ async function processCreate (message) {
       await associateBillingAccountToProject(connection, directProjectId, billingAccountId)
     }
 
-    // update projects.directProjectId in Postgres
-    await helper.getPostgresConnection().query(`update ${config.POSTGRES.PROJECT_TABLE_NAME} set "directProjectId" = ${directProjectId} where id = ${message.payload.id}`)
+    // update projects.directProjectId
+    await projectService.updateProject(message.payload.id, { directProjectId })
 
-    // commit the transaction after successfully update projects.directProjectId in Postgres
+    // commit the transaction after successfully update projects.directProjectId
     await connection.commitTransactionAsync()
   } catch (e) {
     await connection.rollbackTransactionAsync()
@@ -498,19 +498,14 @@ processCreate.schema = {
 }
 
 /**
- * Get direct project id from postgres database
+ * Get direct project id from projects api
  * @param {Object} connection the Informix connection
  * @param {String} id the project id
  * @returns {String} the direct project id
  */
 async function getDirectProjectId (connection, id) {
-  // retrieve projects.directProjectId from Postgres
-  const res = await helper.getPostgresConnection().query(`select "directProjectId" from ${config.POSTGRES.PROJECT_TABLE_NAME} where id = ${id}`)
-  if (res[0].length > 0) {
-    return res[0][0].directProjectId
-  } else {
-    throw new Error(`No project with id: ${id} exist in Postgres database`)
-  }
+  const res = await projectService.getProject(id)
+  return res.directProjectId
 }
 
 /**
@@ -618,7 +613,7 @@ async function addCopilot (userId, projectId, currentUser) {
 
     // get copilot profile id
     const copilotProfileId = await getCopilotProfileId(connection, userId)
-    // get direct project id from postgres database
+    // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
     // Check the current user permission on the project
@@ -769,7 +764,7 @@ async function addManager (userId, projectId, isManager, currentUser) {
     // begin transaction
     await connection.beginTransactionAsync()
 
-    // get direct project id from postgres database
+    // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
     // Check the current user permission on the project
@@ -846,7 +841,7 @@ async function removeCopilot (userId, projectId, currentUser) {
 
     // get copilot profile id
     const copilotProfileId = await getCopilotProfileId(connection, userId)
-    // get direct project id from postgres database
+    // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
     // Check the current user permission on the project
@@ -937,7 +932,7 @@ async function removeManager (userId, projectId, isManager, currentUser) {
     // begin transaction
     await connection.beginTransactionAsync()
 
-    // get direct project id from postgres database
+    // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
     // Check the current user permission on the project
