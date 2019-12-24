@@ -567,7 +567,7 @@ processUpdate.schema = {
       id: joi.numberId(),
       directProjectId: joi.optionalNumberId(),
       billingAccountId: joi.optionalNumberId().allow(null),
-      updatedBy: joi.numberId()
+      updatedBy: joi.number().integer().required(), // could be negative for M2M token
     }).unknown(true).required()
   }).required()
 }
