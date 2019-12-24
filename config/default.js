@@ -31,12 +31,13 @@ module.exports = {
     POOL_MAX_SIZE: parseInt(process.env.IFX_POOL_MAX_SIZE) || 10 // use connection pool in processor, the pool size
   },
 
-  // postgres database configuration
-  POSTGRES: {
-    URL: process.env.POSTGRES_URL || 'postgres://coder:mysecretpassword@dockerhost:5432/projectsdb', // url
-    MAX_POOL_SIZE: parseInt(process.env.POSTGRES_MAX_POOL_SIZE) || 50, // max pool size
-    MIN_POOL_SIZE: parseInt(process.env.POSTGRES_MIN_POOL_SIZE) || 4, // min pool size
-    IDLE_TIME_OUT: parseInt(process.env.POSTGRES_IDLE_TIME_OUT) || 1000, // idle time
-    PROJECT_TABLE_NAME: 'projects' // project table name
-  }
+  // used to get M2M token
+  AUTH0_URL: process.env.AUTH0_URL,
+  AUTH0_PROXY_SERVER_URL: process.env.AUTH0_PROXY_SERVER_URL,
+  AUTH0_AUDIENCE: process.env.AUTH0_AUDIENCE,
+  TOKEN_CACHE_TIME: process.env.TOKEN_CACHE_TIME,
+  AUTH0_CLIENT_ID: process.env.AUTH0_CLIENT_ID,
+  AUTH0_CLIENT_SECRET: process.env.AUTH0_CLIENT_SECRET,
+
+  PROJECTS_API: process.env.PROJECTS_API || 'http://localhost:8001/v5'
 }

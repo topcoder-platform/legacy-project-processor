@@ -2,20 +2,11 @@
  * Contains generic helper methods
  */
 
-require('pg').defaults.parseInt8 = true
-
-const Sequelize = require('sequelize')
 const config = require('config')
 const ifxnjs = require('ifxnjs')
+const tcCoreLibAuth = require('tc-core-library-js').auth
 
-const sequelize = new Sequelize(config.get('POSTGRES.URL'), {
-  logging: false,
-  pool: {
-    max: config.POSTGRES.MAX_POOL_SIZE,
-    min: config.POSTGRES.MIN_POOL_SIZE,
-    idle: config.POSTGRES.IDLE_TIME_OUT
-  }
-})
+const m2m = tcCoreLibAuth.m2m(config)
 
 const Pool = ifxnjs.Pool
 const pool = Promise.promisifyAll(new Pool())
@@ -40,14 +31,6 @@ async function getInformixConnection () {
 }
 
 /**
- * Get Postgres connection using the configured parameters
- * @return {Object} Sequelize object
- */
-function getPostgresConnection () {
-  return sequelize
-}
-
-/**
  * Get Kafka options
  * @return {Object} the Kafka options
  */
@@ -59,8 +42,28 @@ function getKafkaOptions () {
   return options
 }
 
+/**
+  * Get machine to machine token.
+  * @returns {Promise} promise which resolves to the m2m token
+  */
+async function getM2MToken () {
+  return m2m.getMachineToken(config.AUTH0_CLIENT_ID, config.AUTH0_CLIENT_SECRET)
+}
+
+/**
+ * Do nothing (delay) asynchronous
+ *
+ * @param {Number} ms time in milliseconds
+ *
+ * @returns {Promise<Number>} timeoutID
+ */
+async function sleep (ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 module.exports = {
-  getPostgresConnection,
   getInformixConnection,
-  getKafkaOptions
+  getKafkaOptions,
+  getM2MToken,
+  sleep
 }

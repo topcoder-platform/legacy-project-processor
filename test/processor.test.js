@@ -2,8 +2,6 @@
  * E2E test of the legacy project processor.
  */
 
-process.env.NODE_ENV = 'test'
-require('../src/bootstrap')
 const _ = require('lodash')
 const config = require('config')
 const should = require('should')
@@ -13,7 +11,10 @@ const logger = require('../src/common/logger')
 const { testTopics } = require('./testData')
 const { initDB } = require('../scripts/init-db')
 const { insertData } = require('../scripts/test-data')
-const { getPostgresConnection, getInformixConnection, getKafkaOptions } = require('../src/common/helper')
+const { getInformixConnection, getKafkaOptions } = require('../src/common/helper')
+const projectService = require('../src/services/ProjectService')
+const sinon = require('sinon')
+const helper = require('../src/common/helper')
 
 describe('Topcoder - Legacy Project Processor E2E Test', () => {
   let app
@@ -91,6 +92,8 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
   }
 
   before(async () => {
+    sinon.stub(helper, 'getM2MToken').value(() => Promise.resolve('dummy-token'))
+
     // inject logger with log collector
     logger.info = (message) => {
       infoLogs.push(message)
@@ -141,6 +144,8 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
     }
 
     await connection.closeAsync()
+
+    sinon.reset()
   })
 
   beforeEach(() => {
@@ -206,9 +211,9 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
     await sendMessage(testTopics.create.testMessages[0])
     await waitJob()
 
-    // verify data in postgres database
-    let res = await getPostgresConnection().query(`select * from projects where id = 1000`)
-    const directProjectId = res[0][0].directProjectId
+    // verify data in projects api
+    let res = await projectService.getProject(testTopics.create.testMessages[0].payload.id)
+    const directProjectId = res.directProjectId
     directProjectId.should.be.above(0)
 
     // verify data in informix database
@@ -265,8 +270,8 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
     await sendMessage(testTopics.create.testMessages[1])
     await waitJob()
 
-    let res = await getPostgresConnection().query(`select * from projects where id = 1001`)
-    const directProjectId = res[0][0].directProjectId
+    let res = await projectService.getProject(testTopics.create.testMessages[1].payload.id)
+    const directProjectId = res.directProjectId
     should.equal(directProjectId, 500)
 
     res = await connection.queryAsync(`select * from tc_direct_project p where p.project_id = ${directProjectId}`)
@@ -319,8 +324,9 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
     await sendMessage(testTopics.create.testMessages[2])
     await waitJob()
 
-    let res = await getPostgresConnection().query(`select * from projects where id = 1001`)
-    const directProjectId = res[0][0].directProjectId
+    let res = await projectService.getProject(testTopics.create.testMessages[2].payload.id)
+    const directProjectId = res.directProjectId
+    directProjectId.should.be.above(0)
     should.equal(directProjectId, 500)
 
     res = await connection.queryAsync(`select * from tc_direct_project p where p.project_id = ${directProjectId}`)
@@ -607,11 +613,11 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
 
   it('processor update project fail, incorrect project id', async () => {
     let message = _.cloneDeep(testTopics.addMember.testMessages[0])
-    message.payload.projectId = 100
+    message.payload.projectId = 99
     await sendMessage(message)
     await waitJob()
 
-    assertErrorMessage(`No project with id: 100 exist in Postgres database`)
+    assertErrorMessage(`project not found for id 99`)
   })
 
   it('processor update project fail, add the same copilot', async () => {

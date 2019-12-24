@@ -24,5 +24,10 @@ module.exports = {
   ACCOUNT_MANAGER_ROLE: 'account_manager',
   PROJECT_RESOURCE: 'project',
   MEMBER_RESOURCE: 'project.member',
-  BUGR_CONTEST_TYPE_ID: 900001
+  BUGR_CONTEST_TYPE_ID: 900001,
+  /**
+   * Time in milliseconds which we have to wait before update project using
+   * Project Service API
+   */
+  SLEEP_MS_BEFORE_UPDATE_PROJECT_BY_API: 3000
 }
