@@ -19,7 +19,8 @@ const {
   MANAGER_ROLE,
   ACCOUNT_MANAGER_ROLE,
   MANAGER_METADATA_KEY,
-  ACCOUNT_MANAGER_METADATA_KEY
+  ACCOUNT_MANAGER_METADATA_KEY,
+  SLEEP_MS_BEFORE_UPDATE_PROJECT_BY_API
 } = require('../constants')
 
 /**
@@ -466,6 +467,7 @@ async function processCreate (message) {
     }
 
     // update projects.directProjectId
+    await helper.sleep(SLEEP_MS_BEFORE_UPDATE_PROJECT_BY_API)
     await projectService.updateProject(message.payload.id, { directProjectId })
 
     // commit the transaction after successfully update projects.directProjectId

@@ -50,8 +50,20 @@ async function getM2MToken () {
   return m2m.getMachineToken(config.AUTH0_CLIENT_ID, config.AUTH0_CLIENT_SECRET)
 }
 
+/**
+ * Do nothing (delay) asynchronous
+ *
+ * @param {Number} ms time in milliseconds
+ *
+ * @returns {Promise<Number>} timeoutID
+ */
+async function sleep (ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 module.exports = {
   getInformixConnection,
   getKafkaOptions,
-  getM2MToken
+  getM2MToken,
+  sleep
 }
