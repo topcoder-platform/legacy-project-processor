@@ -90,7 +90,7 @@ To run the Legacy Project Processor using docker, follow the steps below
 ```
 KAFKA_URL=192.168.31.8:9092
 INFORMIX_HOST=192.168.31.8
-PROJECTS_API=192.168.31.8
+PROJECTS_API=192.168.31.8:8001/v5
 ```
 
 4. Once that is done, go to run the following command
