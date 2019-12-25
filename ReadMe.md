@@ -86,20 +86,22 @@ To run the Legacy Project Processor using docker, follow the steps below
 
 2. Go to `docker` folder
 
-3. Rename the file `sample.api.env` to `api.env` And properly update M2M-related configuration and the IP addresses to match your environment for the variables : KAFKA_URL, INFORMIX_HOST and PROJECTS_API ( make sure to use IP address instead of hostname ( i.e localhost will not work)).Here is an example:
+3. Rename the file `sample.api.env` to `api.env` and uncomment lines `env_file:` and `- api.env` in `docker-compose.yml`.
+
+4. Properly update M2M-related configuration and the IP addresses to match your environment for the variables : KAFKA_URL, INFORMIX_HOST and PROJECTS_API ( make sure to use IP address instead of hostname ( i.e localhost will not work)).Here is an example:
 ```
 KAFKA_URL=192.168.31.8:9092
 INFORMIX_HOST=192.168.31.8
 PROJECTS_API=192.168.31.8:8001/v5
 ```
 
-4. Once that is done, go to run the following command
+5. Once that is done, go to run the following command
 
 ```
 docker-compose up
 ```
 
-5. When you are running the application for the first time, It will take some time initially to download the image and install the dependencies
+6. When you are running the application for the first time, It will take some time initially to download the image and install the dependencies
 
 ## Running e2e tests
 You need to run `docker-compose build` if modify source files.
