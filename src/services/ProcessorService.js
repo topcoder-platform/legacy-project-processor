@@ -490,7 +490,7 @@ processCreate.schema = {
       resource: joi.string().required(),
       id: joi.numberId(),
       name: joi.string().max(200).required(),
-      description: joi.string().max(10000).allow('').required(),
+      description: joi.string().max(10000).allow('').allow(null).required(),
       directProjectId: joi.optionalNumberId().allow(null),
       billingAccountId: joi.optionalNumberId().allow(null),
       type: joi.string().max(45).required(),
