@@ -7,7 +7,7 @@ services:
       context: ../
       dockerfile: docker/Dockerfile
     # env_file:
-    #   - api.env
-    # command: run start
+    #  - api.env
+    command: run start
     # command: run test
-    command: run test:cov
+    # command: run test:cov

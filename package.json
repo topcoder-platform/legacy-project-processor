@@ -9,21 +9,24 @@
     "lint:fix": "standard --fix",
     "init-db": "node scripts/init-db.js",
     "test-data": "node scripts/test-data.js",
-    "test": "mocha test/helper.test.js && mocha test/processor.test.js --timeout 20000 --exit",
+    "test": "mocha test/helper.test.js && mocha --require test/prepare.js test/processor.test.js --timeout 20000 --exit",
     "helper:test": "nyc --silent mocha test/helper.test.js --exit",
-    "processor:test": "nyc --silent --no-clean mocha test/processor.test.js --timeout 20000 --exit",
+    "processor:test": "nyc --silent --no-clean mocha --require test/prepare.js test/processor.test.js --timeout 20000 --exit",
     "cover:report": "nyc report --reporter=html --reporter=text",
     "test:cov": "npm run helper:test && npm run processor:test && npm run cover:report"
   },
   "author": "TCSCODER",
   "license": "none",
   "devDependencies": {
-    "should": "^13.2.3",
     "mocha": "^6.1.4",
+    "mocha-prepare": "^0.1.0",
+    "nock": "^11.7.0",
     "nyc": "^14.1.1",
-    "superagent": "^5.1.0",
+    "q": "^1.5.1",
+    "should": "^13.2.3",
+    "sinon": "^7.3.2",
     "standard": "^12.0.1",
-    "sinon": "^7.3.2"
+    "superagent": "^5.1.2"
   },
   "dependencies": {
     "@hapi/joi": "^15.1.0",
@@ -34,10 +37,7 @@
     "ifxnjs": "^8.0.1",
     "lodash": "^4.17.11",
     "no-kafka": "^3.4.3",
-    "pg": "^7.11.0",
-    "pg-hstore": "^2.3.3",
-    "q": "^1.5.1",
-    "sequelize": "^5.9.0",
+    "tc-core-library-js": "github:appirio-tech/tc-core-library-js#v2.6.3",
     "topcoder-healthcheck-dropin": "^1.0.3",
     "winston": "^3.2.1"
   },

@@ -10,7 +10,7 @@ const testTopics = {
     integerFields: ['payload.id', 'payload.directProjectId', 'payload.billingAccountId', 'payload.createdBy'],
     testMessages: [
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -26,7 +26,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -42,7 +42,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -66,7 +66,7 @@ const testTopics = {
     integerFields: ['payload.id', 'payload.directProjectId', 'payload.billingAccountId'],
     testMessages: [
       {
-        topic: 'project.notification.update',
+        topic: 'project.action.update',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -79,7 +79,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.update',
+        topic: 'project.action.update',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -92,7 +92,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.update',
+        topic: 'project.action.update',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -105,7 +105,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.update',
+        topic: 'project.action.update',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -125,7 +125,7 @@ const testTopics = {
     integerFields: ['payload.projectId', 'payload.userId', 'payload.createdBy'],
     testMessages: [
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -138,7 +138,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -151,7 +151,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -164,7 +164,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -177,7 +177,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.create',
+        topic: 'project.action.create',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -198,7 +198,7 @@ const testTopics = {
     integerFields: ['payload.projectId', 'payload.userId', 'payload.deletedBy'],
     testMessages: [
       {
-        topic: 'project.notification.delete',
+        topic: 'project.action.delete',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -211,7 +211,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.delete',
+        topic: 'project.action.delete',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',
@@ -224,7 +224,7 @@ const testTopics = {
         }
       },
       {
-        topic: 'project.notification.delete',
+        topic: 'project.action.delete',
         originator: 'project-api',
         timestamp: '2018-07-02T00:00:00',
         'mime-type': 'application/json',

@@ -3,13 +3,10 @@
  */
 
 require('../src/bootstrap')
-const { getPostgresConnection, getInformixConnection } = require('../src/common/helper')
+const { getInformixConnection } = require('../src/common/helper')
 const logger = require('../src/common/logger')
 
 async function insertData () {
-  await getPostgresConnection().query(`delete from projects`)
-  await getPostgresConnection().query(`insert into projects(id, name, description, terms, type, status, "createdBy", "updatedBy", version, "lastActivityAt", "lastActivityUserId") values(1000, 'name-1', 'description-1', '{1}', 'test', 'draft', 8547899, 8547899, '1.0', now(), '8547899')`)
-  await getPostgresConnection().query(`insert into projects(id, "directProjectId", name, description, terms, type, status, "createdBy", "updatedBy", version, "lastActivityAt", "lastActivityUserId") values(1001, 500, 'name-2', 'description-2', '{1}', 'test', 'draft', 8547899, 8547899, '1.0', now(), '8547899')`)
   const connection = await getInformixConnection()
   try {
     await connection.queryAsync(`delete from tcs_catalog:copilot_profile`)
