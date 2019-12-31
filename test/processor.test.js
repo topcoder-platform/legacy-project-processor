@@ -759,24 +759,6 @@ describe('Topcoder - Legacy Project Processor E2E Test', () => {
     }
 
     if (op === 'create') {
-      it(`test invalid parameters, string field name too long`, async () => {
-        let message = _.cloneDeep(testMessages[0])
-        _.set(message, 'payload.name', 'a'.repeat(201))
-        await sendMessage(message)
-        await waitJob()
-
-        assertErrorMessage(`"name" length must be less than or equal to 200 characters long`)
-      })
-
-      it(`test invalid parameters, string field description too long`, async () => {
-        let message = _.cloneDeep(testMessages[0])
-        _.set(message, 'payload.description', 'a'.repeat(10001))
-        await sendMessage(message)
-        await waitJob()
-
-        assertErrorMessage(`"description" length must be less than or equal to 10000 characters long`)
-      })
-
       it(`test invalid parameters, string field type too long`, async () => {
         let message = _.cloneDeep(testMessages[0])
         _.set(message, 'payload.type', 'a'.repeat(46))
