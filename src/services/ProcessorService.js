@@ -489,8 +489,8 @@ processCreate.schema = {
     payload: joi.object().keys({
       resource: joi.string().required(),
       id: joi.numberId(),
-      name: joi.string().max(200).required(),
-      description: joi.string().max(10000).allow('').required(),
+      name: joi.string().required(),
+      description: joi.string().allow(null).allow('').optional(),
       directProjectId: joi.optionalNumberId().allow(null),
       billingAccountId: joi.optionalNumberId().allow(null),
       type: joi.string().max(45).required(),

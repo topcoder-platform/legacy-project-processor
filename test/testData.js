@@ -5,7 +5,7 @@
 const testTopics = {
   create: {
     requiredFields: ['originator', 'timestamp', 'mime-type',
-      'payload.id', 'payload.name', 'payload.description', 'payload.type', 'payload.createdBy'],
+      'payload.id', 'payload.name', 'payload.type', 'payload.createdBy'],
     stringFields: ['payload.name', 'payload.description', 'payload.type'],
     integerFields: ['payload.id', 'payload.directProjectId', 'payload.billingAccountId', 'payload.createdBy'],
     testMessages: [
