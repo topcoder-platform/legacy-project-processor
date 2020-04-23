@@ -618,8 +618,9 @@ async function addCopilot (userId, projectId, currentUser) {
     // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
+    // NOTE: we don't check permission this way, see why https://github.com/topcoder-platform/tc-project-service/issues/524#issuecomment-616541539
     // Check the current user permission on the project
-    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+    // await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
 
     // check if member is assigned as copilot
     const isProjectCopilot = await checkIsProjectCopilot(connection, directProjectId, copilotProfileId)
@@ -769,8 +770,9 @@ async function addManager (userId, projectId, isManager, currentUser) {
     // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
+    // NOTE: we don't check permission this way, see why https://github.com/topcoder-platform/tc-project-service/issues/524#issuecomment-616541539
     // Check the current user permission on the project
-    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+    // await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
 
     const users = await getAllManagers(connection, directProjectId, metadataKeyId)
 
@@ -846,8 +848,9 @@ async function removeCopilot (userId, projectId, currentUser) {
     // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
+    // NOTE: we don't check permission this way, see why https://github.com/topcoder-platform/tc-project-service/issues/524#issuecomment-616541539
     // Check the current user permission on the project
-    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+    // await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
 
     // check if member is assigned as copilot
     const isProjectCopilot = await checkIsProjectCopilot(connection, directProjectId, copilotProfileId)
@@ -937,8 +940,9 @@ async function removeManager (userId, projectId, isManager, currentUser) {
     // get direct project id from projects api
     const directProjectId = await getDirectProjectId(connection, projectId)
 
+    // NOTE: we don't check permission this way, see why https://github.com/topcoder-platform/tc-project-service/issues/524#issuecomment-616541539
     // Check the current user permission on the project
-    await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
+    // await checkAndGetPermissionId(connection, directProjectId, currentUser, PERMISSION_TYPE.PROJECT_FULL)
 
     const users = await getAllManagers(connection, directProjectId, metadataKeyId)
 
