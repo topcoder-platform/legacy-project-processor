@@ -14,7 +14,6 @@ const {
   AUDIT_ACTION,
   PERMISSION_TYPE,
   BUGR_CONTEST_TYPE_ID,
-  ADMIN_ROLE,
   COPILOT_ROLE,
   MANAGER_ROLE,
   ACCOUNT_MANAGER_ROLE,
@@ -54,58 +53,6 @@ async function checkBillingAccountExist (connection, billingAccountId) {
   const result = await connection.queryAsync(`select count(*) as cnt from time_oltp:project p where p.project_id = ${billingAccountId}`)
   if (Number(result[0].cnt) === 0) {
     throw new Error(`The billing account with id: ${billingAccountId} doesn't exist`)
-  }
-}
-
-/**
- * Check user is admin
- * @param {Number} userId the user id.
- * @returns {Boolean} true if user is admin, false otherwise
- */
-async function checkUserIsAdmin (connection, userId) {
-  const result = await connection.queryAsync(`select sr.description as role from common_oltp:security_user su, common_oltp:user_role_xref urx, common_oltp:security_roles sr where urx.login_id = su.login_id and sr.role_id = urx.role_id and su.login_id = ${userId}`)
-  return _.find(result, { role: ADMIN_ROLE }) !== undefined
-}
-
-/**
- * Get user handle by id
- * @param {Number} userId the user id.
- * @returns {String} the user handel
- */
-async function getUserHandle (connection, userId) {
-  const handleRes = await connection.queryAsync(`select handle from common_oltp:user where user_id = ${userId}`)
-  if (handleRes.length === 0) {
-    throw new Error(`User with id: ${userId} doesn't exist.`)
-  }
-  return handleRes[0].handle
-}
-
-/**
- * Ensure user can access the corresponding billing account
- * @param {Object} connection the Informix connection
- * @param {Number} billingAccountId the billing account id
- * @param {Number} userId the user id
- */
-async function checkCanAccessBillingAccount (connection, billingAccountId, userId) {
-  const isAdmin = await checkUserIsAdmin(connection, userId)
-  let directAccessIds
-  if (isAdmin) {
-    directAccessIds = await connection.queryAsync(`select p.project_id as id from time_oltp:project as p left join time_oltp:client_project as cp on p.project_id = cp.project_id left join time_oltp:client c on c.client_id = cp.client_id and (c.is_deleted = 0 or c.is_deleted is null) where p.active = 1 and p.start_date <= current and current <= p.end_date`)
-  } else {
-    const userName = await getUserHandle(connection, userId)
-
-    directAccessIds = await connection.queryAsync(`select p.project_id as id from time_oltp:project as p left join time_oltp:client_project as cp on p.project_id = cp.project_id left join time_oltp:client c on c.client_id = cp.client_id and (c.is_deleted = 0 or c.is_deleted is null) where p.active = 1 and p.start_date <= current and current <= p.end_date and p.active = 1 and p.project_id in (SELECT distinct project_id FROM time_oltp:project_manager p, time_oltp:user_account u WHERE p.user_account_id = u.user_account_id and p.active = 1 and upper(u.user_name) = upper('${userName}') union SELECT distinct project_id FROM time_oltp:project_worker p, time_oltp:user_account u WHERE p.start_date <= current and current <= p.end_date and p.active =1 and p.user_account_id = u.user_account_id and upper(u.user_name) =  upper('${userName}'))`)
-  }
-
-  if (_.find(directAccessIds, { id: billingAccountId })) {
-    return
-  }
-
-  // fetch billing account id via security groups the user has permission with
-  const billingAccountIds = await connection.queryAsync(`select gaba.billing_account_id as id from tcs_catalog:group_associated_billing_accounts gaba, tcs_catalog:customer_group cg where gaba.group_id = cg.group_id and cg.archived<>1 and (cg.client_id in (select ca.client_id from tcs_catalog:customer_administrator ca where ca.user_id=${userId}) or cg.group_id in (select gm.group_id from tcs_catalog:group_member gm, tcs_catalog:customer_group g3 where gm.group_id=g3.group_id and (gm.use_group_default=0 and gm.specific_permission='FULL' or gm.use_group_default=1 and g3.default_permission='FULL') and gm.active=1 and gm.user_id=${userId}))`)
-
-  if (!_.find(billingAccountIds, { id: billingAccountId })) {
-    throw new Error(`You don't have permission to access this billing account`)
   }
 }
 
@@ -243,8 +190,6 @@ async function calculateFeeAndCheckAssociate (connection, directProjectId, billi
   let fee = {}
 
   await checkBillingAccountExist(connection, billingAccountId)
-  // check user can access billing account
-  await checkCanAccessBillingAccount(connection, billingAccountId, userId)
 
   // check whether billing account already associate to this direct project
   // not need to perform checking if we are going to create the direct project latter
