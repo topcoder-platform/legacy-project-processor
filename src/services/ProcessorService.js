@@ -195,6 +195,7 @@ async function calculateFeeAndCheckAssociate (connection, directProjectId, billi
   // not need to perform checking if we are going to create the direct project latter
   if (ifProjectExists) {
     alreadyAssociated = await checkBillingAccountAssociate(connection, directProjectId, billingAccountId)
+    logger.info(`Billing Account already associated: ${alreadyAssociated}`)
 
     if (!alreadyAssociated) {
       // fetch one of associated billing account to check client consistent
