@@ -482,6 +482,7 @@ async function processUpdate (message) {
         await updateProject(connection, directProjectId, fee, existingProject)
 
         if (needAssociate) {
+          logger.info(`Associating billling account ${billingAccountId} to direct project ${directProjectId}`)
           await associateBillingAccountToProject(connection, directProjectId, billingAccountId)
         }
       } else {
