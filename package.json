@@ -13,7 +13,9 @@
     "helper:test": "nyc --silent mocha test/helper.test.js --exit",
     "processor:test": "nyc --silent --no-clean mocha --require test/prepare.js test/processor.test.js --timeout 20000 --exit",
     "cover:report": "nyc report --reporter=html --reporter=text",
-    "test:cov": "npm run helper:test && npm run processor:test && npm run cover:report"
+    "test:cov": "npm run helper:test && npm run processor:test && npm run cover:report",
+    "prepare": "npm run snyk-protect",
+    "snyk-protect": "snyk-protect"
   },
   "author": "TCSCODER",
   "license": "none",
@@ -35,11 +37,12 @@
     "get-parameter-names": "^0.3.0",
     "html-entities": "^1.2.1",
     "ifxnjs": "^8.0.1",
-    "lodash": "^4.17.19",
+    "lodash": "^4.17.20",
     "no-kafka": "^3.4.3",
     "tc-core-library-js": "github:appirio-tech/tc-core-library-js#v2.6.3",
     "topcoder-healthcheck-dropin": "^1.0.3",
-    "winston": "^3.2.1"
+    "winston": "^3.2.1",
+    "@snyk/protect": "latest"
   },
   "engines": {
     "node": "8.x"
@@ -54,5 +57,6 @@
       "scripts/*.js",
       "test/*.js"
     ]
-  }
+  },
+  "snyk": true
 }
