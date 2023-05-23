@@ -7,6 +7,8 @@ RUN mkdir /legacy-project-processor
 WORKDIR /home/informix
 
 RUN sed -i '/jessie-updates/d' /etc/apt/sources.list
+RUN sed -i 's/httpredir/archive/' /etc/apt/sources.list
+RUN sed -i 's/security.debian.org/archive.debian.org\/debian-security/' /etc/apt/sources.list
 RUN apt-get -qq update && apt-get -qq install -y \
   wget gcc g++ make xz-utils python2.7 git curl
 
